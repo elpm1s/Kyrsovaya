@@ -10,15 +10,15 @@ void randomTable(char results[TEAMS][GAMES]);
 // Функция для вывода таблицы результатов
 void printTable(char results[TEAMS][GAMES]);
 // Функция для подсчета очков каждой команды
-void countPoints(char results[TEAMS][GAMES], int points[TEAMS]);
+int* countPoints(char results[TEAMS][GAMES], int points[TEAMS]);
 // Функция для вывода очков каждой команды
 void printPoints(int points[TEAMS]);
 // Функция для поиска команд с более чем n очками
-void searchN(int points[TEAMS], int n);
+int* searchN(int points[TEAMS], int n, int* count);
 // Функция для сортировки команд по очкам (пузырьковая сортировка)
-void sortirovka(int points[TEAMS]);
+void sortirovka(int points[TEAMS], int indices[TEAMS]);
 // Функция для вывода очков в отсортированном порядке
-void printSortirovky(int points[TEAMS]);
+void printSortirovky(int points[TEAMS], int indices[TEAMS]);
 // Функция для редактирования данных в таблице
 int editTable(char results[TEAMS][GAMES]);
 // Функция для вычисления среднего количества очков по всем командам
@@ -32,7 +32,7 @@ int main()
     char results[TEAMS][GAMES]; // Таблица результатов игр
     int points[TEAMS]; // Массив для хранения очков команд
     int choice; // Переменная для выбора действия
-    int a; // Пороговое значение для поиска команд
+    int porog; // Пороговое значение для поиска команд
 
     printf("Таблица соревнований в которой приняли участие 9 команд, проведено игр - 16|\n");
     printf("Функции программы:                                                         |\n");
@@ -45,8 +45,8 @@ int main()
     printf("---------------------------------------------------------------------------|\n");
 
     randomTable(results); // Заполняем таблицу случайными результатами
-    countPoints(results, points); // Подсчитываем очки команд
-
+    int* pointsPointer = countPoints(results, points); // Подсчитываем очки команд
+    int index[TEAMS];
     do {
         // Меню
         printf("\nМеню:\n");
@@ -69,12 +69,24 @@ int main()
             break;
         case 3:
             printf("\nВведите пороговое значение очков: ");
-            scanf("%d", &a);
-            searchN(points, a); // Найти команды с более чем n очками
+            scanf("%d", &porog);
+
+            int count; // Переменная для количества команд
+            int* teams = searchN(points, porog, &count); // Вызов функции
+
+            if (count > 0) {
+                printf("\nКоманды с более чем %d очками:\n", porog);
+                for (int i = 0; i < count; i++) {
+                    printf("Команда %d\n", teams[i]);
+                }
+            }
+            else {
+                printf("\nНет команд с более чем %d очками.\n", porog);
+            }
             break;
         case 4:
-            sortirovka(points); // Отсортировать команды по очкам
-            printSortirovky(points); // Показать отсортированные очки
+            sortirovka(points, index); // Отсортировать команды по очкам
+            printSortirovky(points, index); // Показать отсортированные очки
             break;
         case 5:
             editTable(results); // Редактировать данные в таблице
@@ -116,8 +128,7 @@ void printTable(char results[TEAMS][GAMES])
     }
 }
 
-void countPoints(char results[TEAMS][GAMES], int points[TEAMS])
-{
+int* countPoints(char results[TEAMS][GAMES], int points[TEAMS]) {
     for (int i = 0; i < TEAMS; i++) { // Перебираем команды
         points[i] = 0; // Сбрасываем очки команды
         for (int j = 0; j < GAMES; j++) { // Перебираем игры
@@ -129,6 +140,7 @@ void countPoints(char results[TEAMS][GAMES], int points[TEAMS])
             }
         }
     }
+    return points; // Возвращаем указатель на массив
 }
 
 void printPoints(int points[TEAMS])
@@ -139,33 +151,42 @@ void printPoints(int points[TEAMS])
     }
 }
 
-void searchN(int points[TEAMS], int n)
-{
-    printf("\nКоманды с более чем %d очками:\n", n);
-    for (int i = 0; i < TEAMS; i++) { // Перебираем команды
-        if (points[i] > n) { // Проверяем, больше ли очков, чем n
-            printf("Команда %d: %d очков\n", i + 1, points[i]); // Вывод команд
+int* searchN(int points[TEAMS], int n, int* count) {
+    static int teamIndex[TEAMS]; // Статический массив для хранения номеров команд
+    *count = 0; // Сбрасываем счетчик подходящих команд
+
+    for (int i = 0; i < TEAMS; i++) {
+        if (points[i] > n) {
+            teamIndex[*count] = i + 1; // Сохраняем номер команды (индексация с 1)
+            (*count)++; // Увеличиваем количество подходящих команд
         }
     }
+    return teamIndex; // Возвращаем массив номеров команд
 }
 
-void sortirovka(int points[TEAMS]) {
-    for (int i = 0; i < TEAMS - 1; i++) { // Внешний цикл для проходов
-        for (int j = 0; j < TEAMS - 1 - i; j++) { // Внутренний цикл для сравнения соседних элементов
-            if (points[j] < points[j + 1]) { // Если очки текущей команды меньше следующей
-                // Меняем местами очки
-                int temp = points[j];
-                points[j] = points[j + 1];
-                points[j + 1] = temp;
+void sortirovka(int points[TEAMS], int index[TEAMS]) {
+    // Инициализация массива индексов
+    for (int i = 0; i < TEAMS; i++) {
+        index[i] = i;
+    }
+
+    // Пузырьковая сортировка массива индексов на основе очков
+    for (int i = 0; i < TEAMS - 1; i++) {
+        for (int j = 0; j < TEAMS - 1 - i; j++) {
+            if (points[index[j]] > points[index[j + 1]]) {
+                // Меняем местами индексы
+                int temp = index[j];
+                index[j] = index[j + 1];
+                index[j + 1] = temp;
             }
         }
     }
 }
 
-void printSortirovky(int points[TEAMS]) {
+void printSortirovky(int points[TEAMS], int index[TEAMS]) {
     printf("\nОчки команд в отсортированном порядке:\n");
-    for (int i = 0; i < TEAMS; i++) { // Перебираем команды
-        printf("Команда %d: %d очков\n", i + 1, points[i]); // Выводим очки команды
+    for (int i = 0; i < TEAMS; i++) {
+        printf("Команда %d: %d очков\n", index[i] + 1, points[index[i]]);
     }
 }
 
